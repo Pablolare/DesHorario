@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DesHorario – Registros de horas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container container-wide">
+
+    <!-- Cabecera -->
+    <div class="cabecera">
+        <h1>DesHorario</h1>
+        <div class="cabecera-acciones">
+            <span class="usuario-badge">{{ usuario }}</span>
+            <a href="{{ url_for('logout') }}" class="btn-secundario">Desconectar</a>
+        </div>
+    </div>
+
+    <!-- Panel de filtros -->
+    <div class="filtros-panel">
+        <h2 class="panel-titulo">Filtros de búsqueda</h2>
+
+        <div class="filtros-fila">
+            <div class="form-seccion">
+                <label for="fecha-inicio">Fecha inicio</label>
+                <input type="date" id="fecha-inicio" value="{{ fecha_inicio }}">
+            </div>
+            <div class="form-seccion">
+                <label for="fecha-fin">Fecha fin</label>
+                <input type="date" id="fecha-fin" value="{{ fecha_fin }}">
+            </div>
+        </div>
+
+        <div class="form-seccion" style="margin-top: 20px;">
+            <label>Usuarios</label>
+            <div id="usuarios-lista" class="usuarios-lista">
+                <div class="cargando">Cargando usuarios…</div>
+            </div>
+            <div id="usuarios-contador" class="asignar-contador"></div>
+        </div>
+
+        <div style="margin-top: 24px; display: flex; gap: 10px; align-items: center;">
+            <button type="button" id="btn-buscar" class="btn-buscar">
+                Buscar registros
+            </button>
+            <button type="button" id="btn-sel-todos-usuarios" class="btn-secundario btn-sm">
+                Seleccionar todos
+            </button>
+            <button type="button" id="btn-desel-todos-usuarios" class="btn-secundario btn-sm">
+                Deseleccionar todos
+            </button>
+        </div>
+    </div>
+
+    <!-- Sección de registros -->
+    <div id="registros-seccion" class="registros-seccion" style="display: none;">
+
+        <div class="informe-cabecera">
+            <h2 id="registros-titulo">Registros de horas</h2>
+            <div class="acciones-registros">
+                <button type="button" id="btn-modificar" class="btn-informe" disabled>
+                    Modificar
+                </button>
+                <button type="button" id="btn-borrar" class="btn-peligro" disabled>
+                    Borrar seleccionados
+                </button>
+            </div>
+        </div>
+
+        <div id="sel-info" class="sel-info" style="display: none;">
+            <span id="sel-cuenta"></span>
+            <button type="button" id="btn-deselect" class="btn-link">Deseleccionar todo</button>
+        </div>
+
+        <div id="registros-cargando" class="cargando" style="display: none;">
+            Cargando registros…
+        </div>
+        <div id="registros-vacio" class="sin-responsables" style="display: none;">
+            No hay registros para los filtros seleccionados.
+        </div>
+
+        <div class="tabla-scroll" id="tabla-wrapper" style="display: none;">
+            <table class="tabla-informe">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">
+                            <input type="checkbox" id="check-all" title="Seleccionar todo">
+                        </th>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Proyecto</th>
+                        <th>Actividad</th>
+                        <th>Tarea</th>
+                        <th class="col-horas">Horas</th>
+                        <th>Comentario</th>
+                    </tr>
+                </thead>
+                <tbody id="registros-tbody"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Modal de modificación -->
+<div id="modal-overlay" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-cabecera">
+            <h3>Modificar registro</h3>
+            <button type="button" id="btn-modal-cerrar" class="modal-cerrar" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <form id="form-modificar" novalidate>
+            <input type="hidden" id="mod-id">
+            <input type="hidden" id="mod-lock">
+
+            <div class="form-seccion" style="margin-bottom: 16px;">
+                <label for="mod-fecha">Fecha</label>
+                <input type="date" id="mod-fecha" required>
+            </div>
+
+            <div class="form-seccion" style="margin-bottom: 16px;">
+                <label for="mod-horas">Horas</label>
+                <input type="number" id="mod-horas" step="0.25" min="0.25" max="24" required>
+            </div>
+
+            <div class="form-seccion" style="margin-bottom: 20px;">
+                <label for="mod-comentario">Comentario</label>
+                <textarea id="mod-comentario" rows="3" placeholder="Comentario opcional…"></textarea>
+            </div>
+
+            <div id="modal-error" class="alerta error" style="display: none; margin-bottom: 16px;"></div>
+
+            <div class="modal-acciones">
+                <button type="button" id="btn-modal-cancelar" class="btn-secundario">Cancelar</button>
+                <button type="submit" id="btn-modal-guardar">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const BASE_PATH = "{{ request.script_root }}";
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>
