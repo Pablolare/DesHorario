@@ -641,3 +641,15 @@ button:disabled {
     padding-top: 16px;
     border-top: 1px solid #e2e8f0;
 }
+
+.modal-nota-lote {
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-left: 4px solid #6366f1;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    color: #3730a3;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}

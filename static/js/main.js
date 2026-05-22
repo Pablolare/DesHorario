@@ -1,12 +1,14 @@
 // Estado global
 let registros = [];
 let seleccionados = new Set();
+let modoLote = false;
 
 // ── Inicialización ────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarUsuarios();
 
+    document.getElementById('filtro-usuarios').addEventListener('input', filtrarUsuarios);
     document.getElementById('btn-buscar').addEventListener('click', buscarRegistros);
     document.getElementById('btn-sel-todos-usuarios').addEventListener('click', () => toggleTodosUsuarios(true));
     document.getElementById('btn-desel-todos-usuarios').addEventListener('click', () => toggleTodosUsuarios(false));
@@ -21,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-deselect').addEventListener('click', deseleccionarTodo);
     document.getElementById('check-all').addEventListener('change', toggleTodosRegistros);
 
-    // Cerrar modal con Escape
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') cerrarModal();
     });
@@ -56,6 +57,14 @@ function cargarUsuarios() {
         });
 }
 
+function filtrarUsuarios() {
+    const q = document.getElementById('filtro-usuarios').value.toLowerCase().trim();
+    document.querySelectorAll('#usuarios-lista .check-item').forEach(item => {
+        const nombre = item.querySelector('span').textContent.toLowerCase();
+        item.style.display = nombre.includes(q) ? '' : 'none';
+    });
+}
+
 function toggleTodosUsuarios(marcar) {
     document.querySelectorAll('.cb-usuario').forEach(cb => { cb.checked = marcar; });
     actualizarContadorUsuarios();
@@ -70,28 +79,18 @@ function actualizarContadorUsuarios() {
 // ── Búsqueda de registros ─────────────────────────────────────────────────────
 
 function buscarRegistros() {
-    const usuarios     = [...document.querySelectorAll('.cb-usuario:checked')].map(cb => cb.value);
-    const fechaInicio  = document.getElementById('fecha-inicio').value;
-    const fechaFin     = document.getElementById('fecha-fin').value;
+    const usuarios    = [...document.querySelectorAll('.cb-usuario:checked')].map(cb => cb.value);
+    const fechaInicio = document.getElementById('fecha-inicio').value;
+    const fechaFin    = document.getElementById('fecha-fin').value;
 
-    if (!usuarios.length) {
-        alert('Selecciona al menos un usuario.');
-        return;
-    }
-    if (!fechaInicio || !fechaFin) {
-        alert('Introduce el rango de fechas.');
-        return;
-    }
-    if (fechaInicio > fechaFin) {
-        alert('La fecha de inicio no puede ser posterior a la fecha fin.');
-        return;
-    }
+    if (!usuarios.length) { alert('Selecciona al menos un usuario.'); return; }
+    if (!fechaInicio || !fechaFin) { alert('Introduce el rango de fechas.'); return; }
+    if (fechaInicio > fechaFin) { alert('La fecha de inicio no puede ser posterior a la fecha fin.'); return; }
 
-    const seccion = document.getElementById('registros-seccion');
-    seccion.style.display = 'block';
+    document.getElementById('registros-seccion').style.display = 'block';
     document.getElementById('registros-cargando').style.display = 'block';
-    document.getElementById('tabla-wrapper').style.display     = 'none';
-    document.getElementById('registros-vacio').style.display   = 'none';
+    document.getElementById('tabla-wrapper').style.display      = 'none';
+    document.getElementById('registros-vacio').style.display    = 'none';
 
     seleccionados.clear();
     actualizarAcciones();
@@ -117,9 +116,9 @@ function buscarRegistros() {
             renderTabla();
         })
         .catch(() => {
-            document.getElementById('registros-cargando').style.display  = 'none';
+            document.getElementById('registros-cargando').style.display = 'none';
             const vacio = document.getElementById('registros-vacio');
-            vacio.textContent  = 'Error al cargar los registros.';
+            vacio.textContent   = 'Error al cargar los registros.';
             vacio.style.display = 'block';
         });
 }
@@ -184,23 +183,20 @@ function deseleccionarTodo() {
 function actualizarAcciones() {
     const n        = seleccionados.size;
     const total    = document.querySelectorAll('.cb-registro').length;
-    const btnMod   = document.getElementById('btn-modificar');
-    const btnBor   = document.getElementById('btn-borrar');
-    const selInfo  = document.getElementById('sel-info');
     const checkAll = document.getElementById('check-all');
 
-    btnMod.disabled = n !== 1;
-    btnBor.disabled = n === 0;
+    document.getElementById('btn-modificar').disabled = n === 0;
+    document.getElementById('btn-borrar').disabled    = n === 0;
 
     if (n > 0) {
-        selInfo.style.display = 'flex';
+        document.getElementById('sel-info').style.display = 'flex';
         document.getElementById('sel-cuenta').textContent =
             `${n} registro${n !== 1 ? 's' : ''} seleccionado${n !== 1 ? 's' : ''}`;
     } else {
-        selInfo.style.display = 'none';
+        document.getElementById('sel-info').style.display = 'none';
     }
 
-    if (n === 0)         { checkAll.checked = false; checkAll.indeterminate = false; }
+    if (n === 0)          { checkAll.checked = false; checkAll.indeterminate = false; }
     else if (n === total) { checkAll.checked = true;  checkAll.indeterminate = false; }
     else                  { checkAll.indeterminate = true; }
 }
@@ -208,21 +204,40 @@ function actualizarAcciones() {
 // ── Modal modificar ───────────────────────────────────────────────────────────
 
 function abrirModalModificar() {
-    if (seleccionados.size !== 1) return;
-    const id      = [...seleccionados][0];
-    const registro = registros.find(r => String(r.id) === String(id));
-    if (!registro) return;
+    const ids = [...seleccionados];
+    if (!ids.length) return;
 
-    document.getElementById('mod-id').value          = registro.id;
-    document.getElementById('mod-lock').value        = registro.lockVersion;
-    document.getElementById('mod-fecha').value       = registro.fecha;
-    document.getElementById('mod-horas').value       = registro.horas;
-    document.getElementById('mod-comentario').value  = registro.comentario;
+    modoLote = ids.length > 1;
+
+    const titulo   = document.getElementById('modal-titulo');
+    const nota     = document.getElementById('modal-nota-lote');
+    const campoFecha  = document.getElementById('mod-fecha');
+    const campoHoras  = document.getElementById('mod-horas');
+
+    if (modoLote) {
+        titulo.textContent        = `Modificar ${ids.length} registros`;
+        nota.style.display        = 'block';
+        campoFecha.value          = '';
+        campoHoras.value          = '';
+        document.getElementById('mod-comentario').value = '';
+        campoFecha.removeAttribute('required');
+        campoHoras.removeAttribute('required');
+    } else {
+        const registro = registros.find(r => String(r.id) === String(ids[0]));
+        if (!registro) return;
+        titulo.textContent        = 'Modificar registro';
+        nota.style.display        = 'none';
+        campoFecha.value          = registro.fecha;
+        campoHoras.value          = registro.horas;
+        document.getElementById('mod-comentario').value = registro.comentario;
+        campoFecha.setAttribute('required', '');
+        campoHoras.setAttribute('required', '');
+    }
+
     document.getElementById('modal-error').style.display = 'none';
-
-    const btnGuardar = document.getElementById('btn-modal-guardar');
-    btnGuardar.disabled    = false;
-    btnGuardar.textContent = 'Guardar cambios';
+    const btn = document.getElementById('btn-modal-guardar');
+    btn.disabled    = false;
+    btn.textContent = 'Guardar cambios';
 
     document.getElementById('modal-overlay').style.display = 'flex';
     document.getElementById('mod-fecha').focus();
@@ -235,52 +250,74 @@ function cerrarModal() {
 function guardarModificacion(e) {
     e.preventDefault();
 
-    const id      = document.getElementById('mod-id').value;
-    const payload = {
-        lockVersion: parseInt(document.getElementById('mod-lock').value, 10),
-        fecha:       document.getElementById('mod-fecha').value,
-        horas:       parseFloat(document.getElementById('mod-horas').value),
-        comentario:  document.getElementById('mod-comentario').value
-    };
+    const ids     = [...seleccionados];
+    const fecha      = document.getElementById('mod-fecha').value;
+    const horasVal   = document.getElementById('mod-horas').value;
+    const comentario = document.getElementById('mod-comentario').value;
 
-    const btnGuardar = document.getElementById('btn-modal-guardar');
-    btnGuardar.disabled    = true;
-    btnGuardar.textContent = 'Guardando…';
+    // En lote solo enviamos los campos que se han rellenado
+    const payload = {};
+    if (fecha)    payload.fecha    = fecha;
+    if (horasVal) payload.horas    = parseFloat(horasVal);
+    // Comentario: en lote solo si se escribió algo; en individual siempre
+    if (!modoLote || comentario !== '') payload.comentario = comentario;
 
-    fetch(BASE_PATH + '/api/registro/' + id, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(data => {
-        btnGuardar.disabled    = false;
-        btnGuardar.textContent = 'Guardar cambios';
+    if (modoLote && Object.keys(payload).length === 0) {
+        mostrarErrorModal('Rellena al menos un campo para modificar.');
+        return;
+    }
 
-        if (data.ok) {
-            cerrarModal();
+    const btn = document.getElementById('btn-modal-guardar');
+    btn.disabled    = true;
+    btn.textContent = 'Guardando…';
+
+    Promise.all(ids.map(id => {
+        const registro    = registros.find(r => String(r.id) === String(id));
+        const entryPayload = { ...payload };
+        if (registro) entryPayload.lockVersion = registro.lockVersion;
+
+        return fetch(BASE_PATH + '/api/registro/' + id, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(entryPayload)
+        })
+        .then(r => r.json())
+        .then(data => ({ id, ok: !!data.ok, error: data.error }))
+        .catch(() => ({ id, ok: false, error: 'Error de conexión' }));
+    }))
+    .then(resultados => {
+        btn.disabled    = false;
+        btn.textContent = 'Guardar cambios';
+
+        const exitosos = resultados.filter(r => r.ok);
+        const fallidos = resultados.filter(r => !r.ok);
+
+        // Actualiza los datos locales de los registros modificados correctamente
+        exitosos.forEach(({ id }) => {
             const idx = registros.findIndex(r => String(r.id) === String(id));
-            if (idx !== -1) {
-                registros[idx].fecha      = payload.fecha;
-                registros[idx].horas      = payload.horas;
-                registros[idx].comentario = payload.comentario;
-            }
+            if (idx === -1) return;
+            if (payload.fecha    !== undefined) registros[idx].fecha      = payload.fecha;
+            if (payload.horas    !== undefined) registros[idx].horas      = payload.horas;
+            if (payload.comentario !== undefined) registros[idx].comentario = payload.comentario;
+        });
+
+        if (fallidos.length === 0) {
+            cerrarModal();
             renderTabla();
+        } else if (exitosos.length > 0) {
+            cerrarModal();
+            renderTabla();
+            alert(`${exitosos.length} modificado${exitosos.length !== 1 ? 's' : ''} correctamente, ${fallidos.length} fallido${fallidos.length !== 1 ? 's' : ''}.`);
         } else {
-            mostrarErrorModal(data.error || 'Error al modificar el registro.');
+            mostrarErrorModal(fallidos[0].error || 'Error al modificar los registros.');
         }
-    })
-    .catch(() => {
-        btnGuardar.disabled    = false;
-        btnGuardar.textContent = 'Guardar cambios';
-        mostrarErrorModal('Error de conexión.');
     });
 }
 
 function mostrarErrorModal(msg) {
     const el = document.getElementById('modal-error');
-    el.textContent    = msg;
-    el.style.display  = 'flex';
+    el.textContent   = msg;
+    el.style.display = 'flex';
 }
 
 // ── Borrar seleccionados ──────────────────────────────────────────────────────
@@ -312,7 +349,7 @@ function borrarSeleccionados() {
         seleccionados.clear();
 
         if (registros.length === 0) {
-            document.getElementById('tabla-wrapper').style.display  = 'none';
+            document.getElementById('tabla-wrapper').style.display   = 'none';
             document.getElementById('registros-vacio').style.display = 'block';
             document.getElementById('registros-titulo').textContent  = 'Registros de horas';
         } else {
@@ -320,9 +357,7 @@ function borrarSeleccionados() {
             renderTabla();
         }
 
-        if (fallidos > 0) {
-            alert(`No se pudieron borrar ${fallidos} registro${fallidos !== 1 ? 's' : ''}.`);
-        }
+        if (fallidos > 0) alert(`No se pudieron borrar ${fallidos} registro${fallidos !== 1 ? 's' : ''}.`);
     });
 }
 
